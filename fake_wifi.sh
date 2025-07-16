@@ -74,7 +74,7 @@ sudo ip link set $wifi_iface up
 
 # ===================== CẤU HÌNH HOSTAPD =====================
 echo "[•] Cấu hình hostapd..."
-sudo tee $hostapd_conf > /dev/null <<EOF
+sudo bash -c "cat > $hostapd_conf" <<EOF
 interface=$wifi_iface
 driver=nl80211
 ssid=$ssid
@@ -93,7 +93,7 @@ echo "[•] Cấu hình dnsmasq..."
 sudo pkill dnsmasq 2>/dev/null
 [[ -f "$dnsmasq_conf" ]] && sudo mv "$dnsmasq_conf" "$dnsmasq_backup"
 
-sudo tee $dnsmasq_conf > /dev/null <<EOF
+sudo bash -c "cat > $dnsmasq_conf" <<EOF
 interface=$wifi_iface
 dhcp-range=192.168.88.10,192.168.88.100,12h
 EOF
