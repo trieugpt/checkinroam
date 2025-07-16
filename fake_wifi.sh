@@ -40,9 +40,9 @@ while true; do
     break
 done
 
-sudo ip link set $wifi_iface down
-sudo ip link set $wifi_iface address $mac
-sudo ip link set $wifi_iface up
+sudo ip link set "$wifi_iface" down
+sudo ip link set "$wifi_iface" address "$mac"
+sudo ip link set "$wifi_iface" up
 
 sudo bash -c "cat > $hostapd_conf" <<EOF
 interface=$wifi_iface
@@ -66,9 +66,9 @@ dhcp-range=192.168.88.10,192.168.88.100,12h
 EOF
 
 sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
-sudo iptables -t nat -A POSTROUTING -o $net_iface -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o "$net_iface" -j MASQUERADE
 sudo systemctl stop NetworkManager
-sudo hostapd $hostapd_conf &
+sudo hostapd "$hostapd_conf" &
 sleep 2
 sudo dnsmasq
 
