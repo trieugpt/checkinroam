@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # ===================== CẤU HÌNH =====================
-wifi_iface="wlan1"    # ← card WiFi dùng để phát (thay bằng tên card WiFi của bạn)
-net_iface="enp0s3"    # ← card có kết nối Internet (sửa nếu khác)
+wifi_iface="wlan1"    # ← card WiFi dùng để phát
+net_iface="enp0s3"    # ← card có Internet
 
 hostapd_conf="/etc/hostapd/hostapd.conf"
 dnsmasq_conf="/etc/dnsmasq.conf"
@@ -22,7 +22,7 @@ trap cleanup EXIT
 
 # ===================== KIỂM TRA QUYỀN SUDO =====================
 if [[ $EUID -ne 0 ]]; then
-    echo "❌ Vui lòng chạy bằng quyền root (sudo)!"
+    echo "❌ Vui lòng chạy bằng quyền sudo!"
     exit 1
 fi
 
