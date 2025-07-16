@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ===================== CẤU HÌNH =====================
-wifi_iface="wlan1"    # ← card WiFi dùng phát (sửa nếu cần)
-net_iface="enp0s3"    # ← card có mạng Internet
+wifi_iface="wlan1"    # ← card WiFi dùng để phát (thay bằng tên card WiFi của bạn)
+net_iface="enp0s3"    # ← card có kết nối Internet (sửa nếu khác)
 
 hostapd_conf="/etc/hostapd/hostapd.conf"
 dnsmasq_conf="/etc/dnsmasq.conf"
 dnsmasq_backup="/etc/dnsmasq.conf.bak"
 
-# ===================== DỌN DẸP KHI THOÁT =====================
+# ===================== DỌN DẸP =====================
 cleanup() {
     echo "[•] Dọn dẹp..."
     sudo pkill hostapd
@@ -20,18 +20,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ===================== KIỂM TRA ROOT =====================
+# ===================== KIỂM TRA QUYỀN SUDO =====================
 if [[ $EUID -ne 0 ]]; then
-    echo "❌ Vui lòng chạy với quyền sudo!"
+    echo "❌ Vui lòng chạy bằng quyền root (sudo)!"
     exit 1
 fi
 
 # ===================== NHẬP DỮ LIỆU NGƯỜI DÙNG =====================
 while true; do
-    echo -e "\n📥 Dán vào 3 dòng liên tiếp:"
+    echo -e "\n📥 Nhập 3 dòng thông tin:"
     echo "1. Địa chỉ MAC"
     echo "2. Tên Wi-Fi (SSID)"
-    echo "3. Mật khẩu (≥ 8 ký tự)"
+    echo "3. Mật khẩu Wi-Fi (≥ 8 ký tự)"
     echo -n "> "
 
     input=""
@@ -44,9 +44,8 @@ while true; do
     ssid=$(echo "$input" | sed -n '2p')
     pass=$(echo "$input" | sed -n '3p')
 
-    # Làm sạch MAC
     mac_clean=$(echo "$mac_raw" | tr -d ':-|%#&$@*^{}[]()<>"\\''' ')
-    mac=$(echo "$mac_clean" | sed 's/.\{2\}/&:/g' | sed 's/:$//')
+    mac=$(echo "$mac_clean" | sed 's/..\B/&:/g')
 
     if [[ ! "$mac" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
         echo "❌ MAC không hợp lệ: $mac"
@@ -59,21 +58,21 @@ while true; do
     fi
 
     if [[ ${#pass} -lt 8 ]]; then
-        echo "❌ Mật khẩu phải ≥ 8 ký tự!"
+        echo "❌ Mật khẩu phải từ 8 ký tự trở lên!"
         continue
     fi
 
     break
 done
 
-# ===================== CẤU HÌNH MAC =====================
-echo "[•] Đặt MAC $mac cho $wifi_iface..."
+# ===================== CẤU HÌNH THIẾT BỊ =====================
+echo "[•] Đặt MAC giả: $mac"
 sudo ip link set $wifi_iface down
 sudo ip link set $wifi_iface address $mac
 sudo ip link set $wifi_iface up
 
-# ===================== CẤU HÌNH HOSTAPD =====================
-echo "[•] Cấu hình hostapd..."
+# ===================== TẠO FILE hostapd.conf =====================
+echo "[•] Tạo cấu hình hostapd..."
 sudo bash -c "cat > $hostapd_conf" <<EOF
 interface=$wifi_iface
 driver=nl80211
@@ -88,8 +87,8 @@ wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
 EOF
 
-# ===================== CẤU HÌNH DHCP (dnsmasq) =====================
-echo "[•] Cấu hình dnsmasq..."
+# ===================== TẠO FILE dnsmasq.conf =====================
+echo "[•] Tạo cấu hình dnsmasq..."
 sudo pkill dnsmasq 2>/dev/null
 [[ -f "$dnsmasq_conf" ]] && sudo mv "$dnsmasq_conf" "$dnsmasq_backup"
 
@@ -98,13 +97,13 @@ interface=$wifi_iface
 dhcp-range=192.168.88.10,192.168.88.100,12h
 EOF
 
-# ===================== CẤU HÌNH CHIA SẺ INTERNET =====================
-echo "[•] Bật NAT và chia sẻ Internet..."
+# ===================== CHIA SẺ INTERNET =====================
+echo "[•] Cấu hình chia sẻ Internet..."
 sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
 sudo iptables -t nat -A POSTROUTING -o $net_iface -j MASQUERADE
 
-# ===================== KHỞI ĐỘNG HOTSPOT =====================
-echo "[•] Tắt NetworkManager tạm thời..."
+# ===================== KHỞI ĐỘNG PHÁT WIFI =====================
+echo "[•] Dừng NetworkManager..."
 sudo systemctl stop NetworkManager
 
 echo "[•] Bắt đầu phát WiFi..."
@@ -113,10 +112,10 @@ sleep 2
 sudo dnsmasq
 
 # ===================== HOÀN TẤT =====================
-echo -e "\n✅ HOTSPOT ĐÃ HOẠT ĐỘNG!"
+echo -e "\n✅ WiFi giả đã sẵn sàng!"
 echo "📶 SSID : $ssid"
 echo "🔐 PASS : $pass"
 echo "🕵️‍♂️ MAC  : $mac"
-echo "🌐 Qua Internet: $net_iface"
+echo "🌐 Internet qua: $net_iface"
 echo "[!] Nhấn Ctrl+C để dừng và dọn dẹp."
 sleep infinity
